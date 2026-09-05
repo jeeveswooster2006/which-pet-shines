@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# locally-stored uploaded photos (LocalStorageProvider, dev-only — use
+# STORAGE_PROVIDER=vercel-blob in production instead)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# playwright / e2e
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

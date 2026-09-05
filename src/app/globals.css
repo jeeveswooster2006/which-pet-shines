@@ -1,26 +1,127 @@
 @import "tailwindcss";
 
+/*
+  Deliberately no next/font/google here: this keeps the build free of any
+  external network dependency (fonts fetch at build time otherwise) and
+  keeps the page weight down. -apple-system-ui-rounded gives iPhone/Mac
+  visitors a warm, friendly rounded look for free; everyone else gets a
+  clean, fast system sans. See README "Design decisions".
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-cream: #fffaf3;
+  --color-cream-deep: #fff1e0;
+  --color-ink: #241a2e;
+  --color-ink-soft: #5b5266;
+
+  --color-coral: #ff6a6a;
+  --color-coral-deep: #e94f4f;
+  --color-sunshine: #ffc857;
+  --color-sunshine-deep: #f5a623;
+  --color-mint: #35c9a5;
+  --color-mint-deep: #1f9e80;
+  --color-sky: #4d9de0;
+  --color-grape: #8b5cf6;
+
+  --color-card: #ffffff;
+  --color-border: #f0e4d8;
+
+  --font-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --shadow-soft: 0 10px 30px -12px rgba(36, 26, 46, 0.18);
+  --shadow-pop: 0 4px 14px -4px rgba(36, 26, 46, 0.22);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cream: var(--color-cream);
+  --color-cream-deep: var(--color-cream-deep);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-coral: var(--color-coral);
+  --color-coral-deep: var(--color-coral-deep);
+  --color-sunshine: var(--color-sunshine);
+  --color-sunshine-deep: var(--color-sunshine-deep);
+  --color-mint: var(--color-mint);
+  --color-mint-deep: var(--color-mint-deep);
+  --color-sky: var(--color-sky);
+  --color-grape: var(--color-grape);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Respect reduced-motion preferences site-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible, high-contrast focus ring for keyboard users, on every interactive element. */
+:focus-visible {
+  outline: 3px solid var(--color-sky);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--color-ink);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-pop-in {
+  animation: pop-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120px) rotate(280deg); opacity: 0; }
+}
+.animate-confetti {
+  animation: confetti-fall 1.1s ease-in forwards;
+}
+
+/* Horizontally-scrollable bracket on mobile, with a bit of momentum + snap. */
+.bracket-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.bracket-scroll > * {
+  scroll-snap-align: start;
 }

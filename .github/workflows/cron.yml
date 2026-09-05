@@ -1,0 +1,58 @@
+name: Scheduled tournament engine
+
+# Drives the weekly tournament lifecycle in production by calling the app's
+# own cron API routes over HTTP. This is the right approach when the app is
+# deployed somewhere GitHub Actions can reach over the public internet (e.g.
+# Vercel, Railway, Fly.io) but that platform doesn't offer its own cron, or
+# you'd rather keep scheduling in one place alongside CI.
+#
+# If you deploy to Vercel, you can use vercel.json's Vercel Cron config
+# instead (see that file) and disable the jobs below — don't run both, or
+# you'll double-tick (harmless, since every step is idempotent, but
+# pointless).
+#
+# Required repository secrets:
+#   SITE_URL     - e.g. https://which-pet-shines.example.com (no trailing slash)
+#   CRON_SECRET  - must match the CRON_SECRET env var configured on the deployment
+
+on:
+  schedule:
+    # Every 10 minutes: opens/closes submission windows, activates and
+    # resolves matchups (including sudden death), advances rounds, and
+    # crowns the weekly champion. Cheap and fully idempotent.
+    - cron: "*/10 * * * *"
+    # 00:10 UTC on the 1st of each month: computes Pet of the Month for the
+    # month that just ended.
+    - cron: "10 0 1 * *"
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/tick
+        run: |
+          status=$(curl -s -o /tmp/body.txt -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/tick")
+          cat /tmp/body.txt
+          if [ "$status" -ge 300 ]; then
+            echo "Request failed with status $status"
+            exit 1
+          fi
+
+  pet-of-month:
+    if: github.event.schedule == '10 0 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/pet-of-month
+        run: |
+          status=$(curl -s -o /tmp/body.txt -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/pet-of-month")
+          cat /tmp/body.txt
+          if [ "$status" -ge 300 ]; then
+            echo "Request failed with status $status"
+            exit 1
+          fi

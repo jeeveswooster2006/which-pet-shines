@@ -1,69 +1,220 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Trophy, Sparkles, Users, ArrowRight, Vote as VoteIcon } from "lucide-react";
+import { ButtonLink } from "@/components/Button";
+import { PetPhoto } from "@/components/PetPhoto";
+import {
+  getCurrentTournament,
+  getOpenSubmissionTournament,
+  getEntryCountForTournament,
+  getRoundProgress,
+  getLastCompletedTournament,
+  getCurrentPetOfTheMonthLeader,
+  getHallOfFame,
+} from "@/db/queries";
+import { ROUND_LABELS } from "@/lib/constants";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const now = new Date();
+  const [current, openSubs, lastChampion, potmLeader, hallOfFame] = await Promise.all([
+    getCurrentTournament(),
+    getOpenSubmissionTournament(),
+    getLastCompletedTournament(),
+    getCurrentPetOfTheMonthLeader(now.getUTCMonth() + 1, now.getUTCFullYear()),
+    getHallOfFame(),
+  ]);
+
+  const progress = current?.currentRound
+    ? await getRoundProgress(current.id, current.currentRound)
+    : null;
+  const openEntryCount = openSubs ? await getEntryCountForTournament(openSubs.id) : 0;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div>
+      <Hero />
+
+      <Section title="This Week's Tournament" icon={<VoteIcon className="h-6 w-6" aria-hidden />}>
+        {current && progress ? (
+          <div className="grid gap-6 sm:grid-cols-3">
+            <Stat label="Current round" value={ROUND_LABELS[current.currentRound!]} />
+            <Stat label="Pets competing" value={String(current.bracketSize ?? "—")} />
+            <Stat
+              label="Matchups live now"
+              value={`${progress.live} live · ${progress.completed}/${progress.total} done`}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+        ) : (
+          <p className="text-ink-soft">
+            No bracket in progress right now — check back Sunday when this week&apos;s Round of 64 kicks
+            off. {openEntryCount > 0 && `${openEntryCount} pet${openEntryCount === 1 ? "" : "s"} already entered for next round.`}
+          </p>
+        )}
+        <div className="mt-6 flex flex-wrap gap-3">
+          <ButtonLink href="/vote">Vote now</ButtonLink>
+          <ButtonLink href="/bracket" variant="outline">
+            View bracket <ArrowRight className="h-4 w-4" aria-hidden />
+          </ButtonLink>
         </div>
-      </main>
+      </Section>
+
+      {lastChampion?.champion && (
+        <Section title="Last Week's Champion" icon={<Trophy className="h-6 w-6" aria-hidden />} tone="deep">
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-stretch">
+            <Link
+              href={`/pet/${lastChampion.champion.slug}`}
+              className="block h-56 w-56 shrink-0 overflow-hidden rounded-3xl border-4 border-sunshine shadow-soft"
+            >
+              <PetPhoto src={lastChampion.champion.photoUrl} alt={lastChampion.champion.name} priority />
+            </Link>
+            <div className="flex flex-col justify-center text-center sm:text-left">
+              <p className="text-sm font-bold uppercase tracking-wide text-sunshine-deep">
+                👑 Weekly Champion
+              </p>
+              <h3 className="mt-1 font-display text-3xl font-extrabold text-ink">
+                {lastChampion.champion.name}
+              </h3>
+              {lastChampion.champion.species && (
+                <p className="text-ink-soft">{lastChampion.champion.species}</p>
+              )}
+              <div className="mt-4">
+                <ButtonLink href={`/pet/${lastChampion.champion.slug}`} size="sm">
+                  See {lastChampion.champion.name}&apos;s page
+                </ButtonLink>
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      <Section title="Pet of the Month" icon={<Sparkles className="h-6 w-6" aria-hidden />}>
+        {potmLeader?.pet ? (
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-stretch">
+            <Link
+              href={`/pet/${potmLeader.pet.slug}`}
+              className="block h-56 w-56 shrink-0 overflow-hidden rounded-3xl border-4 border-grape shadow-soft"
+            >
+              <PetPhoto src={potmLeader.pet.photoUrl} alt={potmLeader.pet.name} />
+            </Link>
+            <div className="flex flex-col justify-center text-center sm:text-left">
+              <p className="text-sm font-bold uppercase tracking-wide text-grape">
+                🏅 Leading this month
+              </p>
+              <h3 className="mt-1 font-display text-3xl font-extrabold text-ink">{potmLeader.pet.name}</h3>
+              <p className="mt-1 flex items-center justify-center gap-1.5 text-ink-soft sm:justify-start">
+                <Users className="h-4 w-4" aria-hidden />
+                {potmLeader.totalVotes.toLocaleString()} total votes this month
+              </p>
+              <div className="mt-4">
+                <ButtonLink href="/pet-of-the-month" size="sm" variant="outline">
+                  How Pet of the Month works
+                </ButtonLink>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-ink-soft">
+            Votes are still coming in — the pet with the most total votes this month wins the title.
+          </p>
+        )}
+      </Section>
+
+      <Section title="Hall of Fame" icon={<Trophy className="h-6 w-6" aria-hidden />} tone="deep">
+        {hallOfFame.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {hallOfFame.slice(0, 4).map((entry) =>
+              entry.pet ? (
+                <Link
+                  key={entry.id}
+                  href={`/pet/${entry.pet.slug}`}
+                  className="group flex flex-col items-center gap-2 rounded-2xl p-2 text-center transition-colors hover:bg-cream"
+                >
+                  <div className="h-24 w-24 overflow-hidden rounded-full border-2 border-border shadow-soft transition-transform group-hover:scale-105 sm:h-28 sm:w-28">
+                    <PetPhoto src={entry.pet.photoUrl} alt={entry.pet.name} />
+                  </div>
+                  <p className="font-semibold text-ink">{entry.pet.name}</p>
+                  <p className="text-xs text-ink-soft">
+                    {entry.month}/{entry.year}
+                  </p>
+                </Link>
+              ) : null
+            )}
+          </div>
+        ) : (
+          <p className="text-ink-soft">No Pet of the Month winners yet — be the first!</p>
+        )}
+        <div className="mt-6">
+          <ButtonLink href="/hall-of-fame" variant="outline">
+            See the full Hall of Fame <ArrowRight className="h-4 w-4" aria-hidden />
+          </ButtonLink>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function Hero() {
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-b from-coral via-sunshine to-mint px-4 py-16 text-center sm:py-24">
+      <div className="pointer-events-none absolute inset-0 opacity-20" aria-hidden>
+        <span className="absolute left-[8%] top-[15%] text-6xl">🐶</span>
+        <span className="absolute right-[10%] top-[20%] text-6xl">🐱</span>
+        <span className="absolute bottom-[12%] left-[15%] text-5xl">🐰</span>
+        <span className="absolute bottom-[18%] right-[12%] text-5xl">🦜</span>
+      </div>
+      <div className="relative mx-auto max-w-3xl">
+        <h1 className="font-display text-4xl font-extrabold text-white drop-shadow-sm sm:text-6xl">
+          ✨ Which Pet Shines?
+        </h1>
+        <p className="mt-4 text-lg font-semibold text-white/95 drop-shadow-sm sm:text-2xl">
+          Your pet. Their pet. You decide.
+        </p>
+        <p className="mx-auto mt-4 max-w-xl text-white/90 sm:text-lg">
+          A weekly knockout competition for real dogs, cats, rabbits, birds, and more. Vote in
+          head-to-head matchups all week long — a new champion is crowned every Saturday.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <ButtonLink href="/vote" size="lg" variant="secondary" className="bg-ink">
+            Vote now
+          </ButtonLink>
+          <ButtonLink href="/enter" size="lg" className="bg-white text-ink hover:bg-white/90">
+            Enter your pet
+          </ButtonLink>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({
+  title,
+  icon,
+  tone = "plain",
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  tone?: "plain" | "deep";
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`px-4 py-12 sm:py-16 ${tone === "deep" ? "bg-cream-deep/50" : ""}`}>
+      <div className="mx-auto max-w-4xl">
+        <h2 className="flex items-center gap-2 font-display text-2xl font-extrabold text-ink sm:text-3xl">
+          <span className="text-coral">{icon}</span>
+          {title}
+        </h2>
+        <div className="mt-6">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">{label}</p>
+      <p className="mt-1 font-display text-xl font-extrabold text-ink">{value}</p>
     </div>
   );
 }
